@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-oracle.py — C 方案核心 v1.1
-2次 LLM 调用，完成分析、写作、润色，保留全部核心特色
+oracle.py — Binance Square Oracle v1.0 核心引擎
+2 次 LLM 调用，完成分析、写作、润色。
 
-- 第一次 LLM 调用：分析+写作
-  - 输入：全部采集数据 + 9种风格模板 + 写作规则
+- 第一次 LLM 调用：分析 + 写作
+  - 输入：按风格路由采集的市场数据 + 风格模板 + 写作规则
   - 输出：初稿 + 预言机评分 + 个人风格指纹
-- 第二次 LLM 调用：去AI味润色
+- 第二次 LLM 调用：去 AI 味润色
   - 输入：初稿 + Humanizer 规则
   - 输出：终稿
+
+支持 9 种内置风格 + 用户 DIY 自定义风格。
 """
 
 import json
@@ -65,46 +67,60 @@ Provide only the revised, final article text. Do not add any extra text or expla
 # 核心函数
 # ---------------------------------------------------------------------------
 def _load_prompt_template(style_name):
-    """加载指定风格的 prompt 模板"""
+    """
+    加载指定风格的 prompt 模板。
+    支持内置风格和 DIY 自定义风格（用户在 prompts/ 目录下添加 .md 文件即可）。
+    """
     path = os.path.join(config.PROMPTS_DIR, f"{style_name}.md")
     if not os.path.exists(path):
-        raise FileNotFoundError(f"Style \'{style_name}\' not found at {path}")
-    with open(path, "r") as f:
+        raise FileNotFoundError(
+            f"Style '{style_name}' not found at {path}\n"
+            f"Available styles: {', '.join(list_available_styles())}\n"
+            f"To create a DIY style, add a file: prompts/{style_name}.md"
+        )
+    with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
+
 def _load_writing_rules():
-    """加载写作规则 skill"""
+    """加载写作规则 Skill"""
     path = os.path.join(config.SKILLS_DIR, "crypto-content-writer", "SKILL.md")
     if not os.path.exists(path):
         return "No specific writing rules provided."
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
-def generate_article(market_data, style_name="kol_style", user_intent="BTC深度分析"):
+
+def generate_article(market_data, style_name="kol_style", user_intent="BTC analysis"):
     """
-    C 方案核心入口：2次 LLM 调用，生成最终文章
+    核心入口：2 次 LLM 调用，生成最终文章。
     """
-    # --- 第一次 LLM 调用：分析+写作 ---
-    print(f"[oracle] 第一次 LLM 调用：分析数据并以 {style_name} 风格写作...")
+    # --- 第一次 LLM 调用：分析 + 写作 ---
+    print(f"[oracle] LLM call 1/2: Analyzing data with '{style_name}' style...")
     style_prompt = _load_prompt_template(style_name)
     writing_rules = _load_writing_rules()
-    
+
     # 清理 market_data：移除错误项和空字段
     cleaned_data = {}
     for k, v in market_data.items():
         if v is None or (isinstance(v, dict) and "error" in v):
             continue
+        if isinstance(v, dict) and v.get("skipped"):
+            continue
         cleaned_data[k] = v
-    
+
     prompt1 = ANALYSIS_WRITING_PROMPT.format(
         market_data=json.dumps(cleaned_data, indent=2, ensure_ascii=False),
         style_name=style_name,
         style_prompt=style_prompt,
         writing_rules=writing_rules,
     )
-    
-    response1_raw = config.call_llm(system_prompt="You are a crypto analyst.", user_prompt=prompt1)
-    
+
+    response1_raw = config.call_llm(
+        system_prompt="You are a crypto analyst.",
+        user_prompt=prompt1
+    )
+
     try:
         # 提取 JSON 内容
         match = re.search(r"```json\n(.*?)\n```", response1_raw, re.DOTALL)
@@ -112,21 +128,24 @@ def generate_article(market_data, style_name="kol_style", user_intent="BTC深度
             json_str = match.group(1)
         else:
             json_str = response1_raw
-        
+
         response1_json = json.loads(json_str)
         article_draft = response1_json["article_draft"]
         oracle_score = response1_json["oracle_score"]
         style_fingerprint = response1_json["style_fingerprint"]
     except (json.JSONDecodeError, KeyError) as e:
-        print(f"[oracle] 第一次 LLM 调用失败：无法解析 JSON。原始响应：\n{response1_raw}")
+        print(f"[oracle] LLM call 1 failed: cannot parse JSON. Raw response:\n{response1_raw[:500]}")
         return {"error": "Failed to parse LLM response", "raw_response": response1_raw}
 
-    print(f"[oracle] 初稿完成。预言机评分: {oracle_score}/100")
+    print(f"[oracle] Draft complete. Oracle Score: {oracle_score}/100")
 
-    # --- 第二次 LLM 调用：去AI味润色 ---
-    print("[oracle] 第二次 LLM 调用：去AI味润色...")
+    # --- 第二次 LLM 调用：去 AI 味润色 ---
+    print("[oracle] LLM call 2/2: Humanizing...")
     prompt2 = HUMANIZER_PROMPT.format(article_draft=article_draft)
-    final_article = config.call_llm(system_prompt="You are a content polisher.", user_prompt=prompt2)
+    final_article = config.call_llm(
+        system_prompt="You are a content polisher.",
+        user_prompt=prompt2
+    )
 
     return {
         "final_article": final_article,
@@ -139,33 +158,68 @@ def generate_article(market_data, style_name="kol_style", user_intent="BTC深度
 
 
 def list_available_styles():
-    """返回 prompts/ 目录下所有可用风格名称列表"""
+    """
+    返回 prompts/ 目录下所有可用风格名称列表。
+    包括 9 种内置风格和用户添加的 DIY 风格。
+    """
     if not os.path.isdir(config.PROMPTS_DIR):
         return []
-    return [
+    return sorted([
         os.path.splitext(f)[0]
         for f in os.listdir(config.PROMPTS_DIR)
         if f.endswith(".md")
+    ])
+
+
+def is_builtin_style(style_name):
+    """判断是否为内置风格"""
+    builtin = [
+        "kol_style", "deep_analysis", "daily_express", "meme_hunter",
+        "onchain_insight", "oracle", "project_research", "trading_signal", "tutorial"
     ]
+    return style_name in builtin
 
 
-def run_oracle(symbol="bitcoin", futures_symbol="BTCUSDT", style_name="kol_style", user_intent="BTC深度分析", enable_l4=False):
+def run_oracle(symbol="bitcoin", futures_symbol="BTCUSDT", style_name="kol_style",
+               user_intent="BTC analysis", enable_l4=False, enable_l8=False):
     """
-    C 方案主入口：采集数据 + 生成文章。
+    主入口：按风格路由采集数据 + 生成文章 + 可选发布。
     """
     from collect import collect_all
-    print(f"[oracle] 启动预言机 v1.1 | 主题: {user_intent} | 风格: {style_name}")
-    market_data = collect_all(symbol=symbol, futures_symbol=futures_symbol)
-    return generate_article(market_data, style_name=style_name, user_intent=user_intent)
+
+    print(f"[oracle] Binance Square Oracle v{config.VERSION}")
+    print(f"[oracle] Topic: {user_intent} | Style: {style_name}")
+    if not is_builtin_style(style_name):
+        print(f"[oracle] DIY style detected: '{style_name}' (using default data route)")
+
+    # 按风格路由采集数据
+    market_data = collect_all(
+        symbol=symbol,
+        futures_symbol=futures_symbol,
+        style_name=style_name,
+        enable_l4=enable_l4
+    )
+
+    # 生成文章
+    result = generate_article(market_data, style_name=style_name, user_intent=user_intent)
+
+    # 可选 L8 广场发布
+    if enable_l8 and "final_article" in result:
+        from publish import publish_to_square
+        pub_result = publish_to_square(result["final_article"])
+        result["publish_result"] = pub_result
+        if pub_result.get("success"):
+            print("[oracle] Article published to Binance Square!")
+        elif pub_result.get("skipped"):
+            print(f"[oracle] Publish skipped: {pub_result.get('reason')}")
+        else:
+            print(f"[oracle] Publish failed: {pub_result}")
+
+    return result
 
 
 if __name__ == "__main__":
-    # 用于测试的模拟数据
-    mock_market_data = {
-        "coingecko_price": {"bitcoin": {"usd": 68500, "usd_24h_vol": 25000000000, "usd_24h_change": 2.5, "usd_7d_change": -5.1}},
-        "fear_greed_index": {"data": [{"value": "25", "value_classification": "Extreme Fear"}]},
-        "social_hype_rank": {"data": {"leaderBoardList": [{"metaInfo": {"symbol": "PEPE"}}]}},
-    }
-    result = generate_article(mock_market_data)
-    print("\n--- FINAL ARTICLE ---\n")
-    print(result.get("final_article", "Generation failed."))
+    print("Available styles:", list_available_styles())
+    print("\nTo run the oracle:")
+    print("  from oracle import run_oracle")
+    print("  result = run_oracle(style_name='deep_analysis')")

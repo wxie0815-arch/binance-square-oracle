@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-tests/test_l7_generator.py — oracle.py 核心引擎测试 v1.1
-验证 oracle.py 的函数接口、风格加载、数据清理逻辑。
+tests/test_l7_generator.py — Oracle engine tests for v1.0
 """
 
 import os
@@ -27,18 +26,20 @@ class TestOracleImports(unittest.TestCase):
         self.assertTrue(callable(oracle.run_oracle))
 
     def test_run_oracle_signature(self):
-        """run_oracle 应接受 symbol、futures_symbol、style_name、user_intent 参数"""
         import inspect
         sig = inspect.signature(oracle.run_oracle)
         params = list(sig.parameters.keys())
-        for expected in ["symbol", "futures_symbol", "style_name", "user_intent"]:
-            self.assertIn(expected, params, f"run_oracle 缺少参数: {expected}")
+        for expected in ["symbol", "futures_symbol", "style_name", "user_intent", "enable_l4", "enable_l8"]:
+            self.assertIn(expected, params, f"run_oracle missing param: {expected}")
 
-    def test_no_model_param_in_run_oracle(self):
-        """run_oracle 不应接受 model 参数（统一使用 OpenClaw 系统 API）"""
-        import inspect
-        sig = inspect.signature(oracle.run_oracle)
-        self.assertNotIn("model", sig.parameters)
+    def test_list_available_styles(self):
+        styles = oracle.list_available_styles()
+        self.assertIsInstance(styles, list)
+        self.assertGreaterEqual(len(styles), 9)
+
+    def test_is_builtin_style(self):
+        self.assertTrue(oracle.is_builtin_style("deep_analysis"))
+        self.assertFalse(oracle.is_builtin_style("my_custom_style"))
 
 
 class TestOracleStyleLoading(unittest.TestCase):
@@ -118,6 +119,7 @@ class TestOracleTwoStageFlow(unittest.TestCase):
             "spot_ticker": {"lastPrice": "85000"},
             "bad_field": {"error": "timeout"},
             "none_field": None,
+            "skipped_field": {"skipped": True, "reason": "not configured"},
         }
         first_response = json.dumps({
             "article_draft": "测试文章",

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-tests/test_writing_skill.py — collect.py 数据采集层 + 提示模板测试 v1.1
-验证各个数据采集函数的可调用性、别名导出，以及 9 种风格模板文件的存在。
+tests/test_writing_skill.py — Data collection and style template tests for v1.0
 """
 
 import os
@@ -64,10 +63,29 @@ class TestCollectFunctions(unittest.TestCase):
     def test_collect_all_callable(self):
         self.assertTrue(callable(collect.collect_all))
 
-    def test_no_alpha_token_list(self):
-        """alpha token list 相关函数应已移除"""
-        self.assertFalse(hasattr(collect, "fetch_alpha_token_list"))
-        self.assertFalse(hasattr(collect, "get_alpha_token_list"))
+    def test_get_alpha_token_list_callable(self):
+        self.assertTrue(callable(collect.get_alpha_token_list))
+
+    def test_get_token_search_callable(self):
+        self.assertTrue(callable(collect.get_token_search))
+
+    def test_get_token_audit_callable(self):
+        self.assertTrue(callable(collect.get_token_audit))
+
+    def test_get_address_info_callable(self):
+        self.assertTrue(callable(collect.get_address_info))
+
+    def test_style_data_routes_exist(self):
+        self.assertTrue(hasattr(collect, 'STYLE_DATA_ROUTES'))
+        self.assertGreaterEqual(len(collect.STYLE_DATA_ROUTES), 9)
+
+    def test_default_data_route_exists(self):
+        self.assertTrue(hasattr(collect, 'DEFAULT_DATA_ROUTE'))
+
+    def test_collect_all_accepts_style(self):
+        import inspect
+        sig = inspect.signature(collect.collect_all)
+        self.assertIn('style_name', sig.parameters)
 
     def test_fetch_aliases_exist(self):
         """fetch_* 别名应全部存在"""
@@ -131,7 +149,7 @@ class TestPromptTemplates(unittest.TestCase):
             self.assertTrue(os.path.exists(path), f"缺少风格模板: {style}.md")
 
     def test_total_styles_count(self):
-        """应有至少 9 个风格模板"""
+        """Should have at least 9 style templates"""
         prompts_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "prompts")
         templates = glob.glob(os.path.join(prompts_dir, "*.md"))
         self.assertGreaterEqual(len(templates), 9, f"风格模板数量不足: {len(templates)}")
