@@ -5,7 +5,6 @@ collect.py — C 方案数据采集层 v1.1
 
 官方 Skill 来源（全部公开接口，无需认证）：
   binance/spot                          — 现货行情 (api.binance.com)
-  binance/alpha                         — Alpha 早期项目 (www.binance.com/bapi/defi)
   binance/derivatives-trading-usds-futures — 合约多空比/清算 (fapi.binance.com)
   binance-web3/crypto-market-rank       — 社交热度/Alpha/智能钱 (web3.binance.com)
   binance-web3/trading-signal           — 链上智能钱信号 (web3.binance.com)
@@ -75,27 +74,7 @@ def get_spot_klines(symbol="BTCUSDT", interval="1d", limit=7):
     return _http_get(url, headers={"User-Agent": "BinanceSquareOracle/1.1"})
 
 # ===========================================================================
-# 官方 Skill 2 — binance/alpha
-# Alpha 早期项目列表，无需认证
-# ===========================================================================
-def get_alpha_token_list(top_n=20):
-    """Alpha 早期项目列表，按 score 降序取 Top N（默认20）"""
-    url = "https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list"
-    raw = _http_get(url, headers=BAPI_HEADERS)
-    if isinstance(raw, dict) and "data" in raw:
-        items = raw["data"] if isinstance(raw["data"], list) else []
-        items_sorted = sorted(items, key=lambda x: x.get("score", 0), reverse=True)
-        raw["data"] = items_sorted[:top_n]
-        raw["_total"] = len(items)
-        raw["_returned"] = len(raw["data"])
-    return raw
-
-def get_alpha_ticker(symbol="ALPHA_175USDT"):
-    url = f"https://www.binance.com/bapi/defi/v1/public/alpha-trade/ticker?symbol={symbol}"
-    return _http_get(url, headers=BAPI_HEADERS)
-
-# ===========================================================================
-# 官方 Skill 3 — binance/derivatives-trading-usds-futures
+# 官方 Skill 2 — binance/derivatives-trading-usds-futures
 # 合约公开数据：多空比、清算、资金费率，无需认证
 # ===========================================================================
 def get_futures_long_short_ratio(symbol="BTCUSDT", period="1h", limit=5):
@@ -244,8 +223,6 @@ async def collect_all_data(symbol="bitcoin", futures_symbol="BTCUSDT"):
         # --- binance/spot ---
         "spot_ticker":              lambda: get_spot_ticker(f"{futures_symbol}"),
         "spot_klines_7d":           lambda: get_spot_klines(f"{futures_symbol}", "1d", 7),
-        # --- binance/alpha ---
-        "alpha_token_list":         get_alpha_token_list,
         # --- binance/derivatives-trading-usds-futures ---
         "futures_long_short_ratio": lambda: get_futures_long_short_ratio(futures_symbol),
         "futures_top_account_ratio":lambda: get_futures_top_account_ratio(futures_symbol),
@@ -292,8 +269,6 @@ def collect_all(symbol="bitcoin", futures_symbol="BTCUSDT"):
 # ===========================================================================
 fetch_spot_ticker          = get_spot_ticker
 fetch_spot_klines          = get_spot_klines
-fetch_alpha_token_list     = get_alpha_token_list
-fetch_alpha_ticker         = get_alpha_ticker
 fetch_futures_ls_ratio     = get_futures_long_short_ratio
 fetch_futures_top_ratio    = get_futures_top_account_ratio
 fetch_futures_funding_rate = get_futures_funding_rate

@@ -89,34 +89,12 @@ def generate_article(market_data, style_name="kol_style", user_intent="BTC深度
     style_prompt = _load_prompt_template(style_name)
     writing_rules = _load_writing_rules()
     
-    # 清理 market_data，移除过大的、不相关的字段
-    # 清理 market_data：移除错误项，并对 alpha_token_list 只保留关键字段
+    # 清理 market_data：移除错误项和空字段
     cleaned_data = {}
     for k, v in market_data.items():
         if v is None or (isinstance(v, dict) and "error" in v):
             continue
-        if k == "alpha_token_list" and isinstance(v, dict) and "data" in v:
-            # 只保留 Top 20 项目的关键字段，避免 prompt 过长
-            items = v.get("data", [])
-            cleaned_data[k] = {
-                "_total": v.get("_total", len(items)),
-                "top20": [
-                    {
-                        "symbol": t.get("symbol"),
-                        "name": t.get("name"),
-                        "price": t.get("price"),
-                        "percentChange24h": t.get("percentChange24h"),
-                        "volume24h": t.get("volume24h"),
-                        "marketCap": t.get("marketCap"),
-                        "holders": t.get("holders"),
-                        "score": t.get("score"),
-                        "liquidity": t.get("liquidity"),
-                    }
-                    for t in items
-                ]
-            }
-        else:
-            cleaned_data[k] = v
+        cleaned_data[k] = v
     
     prompt1 = ANALYSIS_WRITING_PROMPT.format(
         market_data=json.dumps(cleaned_data, indent=2, ensure_ascii=False),

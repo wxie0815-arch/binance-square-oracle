@@ -14,12 +14,11 @@
 
 | 特色 | 说明 |
 | :--- | :--- |
-| 🏦 **12 个官方 Skill 数据源** | 完整覆盖 `binance/spot`、`binance/alpha`、`binance/derivatives-trading-usds-futures`、`binance-web3/crypto-market-rank`、`binance-web3/trading-signal`、`binance-web3/meme-rush` 等官方 Skill |
+| 🏦 **11 个官方 Skill 数据源** | 完整覆盖 `binance/spot`、`binance/derivatives-trading-usds-futures`、`binance-web3/crypto-market-rank`、`binance-web3/trading-signal`、`binance-web3/meme-rush` 等官方 Skill |
 | ⚡ **并发采集，极速响应** | 所有数据源并发请求，采集时间从串行的 15-20 秒压缩至约 5 秒 |
 | 🎨 **9 种文章风格** | KOL 风格、深度分析、每日快讯、Meme 猎手、链上洞察、预言机、项目研究、交易信号、教程，覆盖全场景 |
 | 🤖 **2 次 LLM 调用** | 第一次：分析数据 + 生成初稿 + 预言机评分；第二次：去 AI 味润色，确保内容真实自然 |
 | 📊 **预言机评分** | LLM 根据多维度数据给出 0-100 分市场信心评分，并提供评分理由 |
-| 🔬 **Alpha 早期项目监控** | 实时追踪币安 Alpha 平台的早期项目列表，第一时间发现潜力代币 |
 | 📈 **合约多空比 / 清算数据** | 接入 `fapi.binance.com` 公开合约数据，分析市场多空情绪 |
 | 💡 **智能钱流入追踪** | 实时监控链上聪明钱的资金流向，捕捉机构级别的信号 |
 | 🐸 **Meme 叙事追踪** | 追踪 Meme Rush 新发和迁移代币，不错过任何叙事风口 |
@@ -41,12 +40,11 @@
 │  collect.py — 并发数据采集层                                      │
 │                                                                  │
 │  官方 Skill 数据源（全部无需认证）：                               │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
-│  │ binance/spot    │  │ binance/alpha   │  │ binance/        │  │
-│  │ 现货行情         │  │ 早期项目监控     │  │ derivatives-    │  │
-│  │ 24h ticker      │  │ Alpha 代币列表   │  │ trading         │  │
-│  │ K 线数据         │  │ Alpha 行情       │  │ 多空比/清算      │  │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
+│  ┌─────────────────────────────┐  ┌─────────────────────────────┐  │
+│  │ binance/spot                │  │ binance/derivatives-trading │  │
+│  │ 现货行情 · 24h ticker        │  │ 多空比 · 清算数据             │  │
+│  │ K 线数据                    │  │ 资金费率 · 未平仓合约量        │  │
+│  └─────────────────────────────┘  └─────────────────────────────┘  │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
 │  │ binance-web3/   │  │ binance-web3/   │  │ binance-web3/   │  │
 │  │ crypto-market-  │  │ trading-signal  │  │ meme-rush       │  │
@@ -169,8 +167,6 @@ publish_to_square(result['final_article'])
 | :--- | :--- | :--- | :--- |
 | `binance/spot` | `api.binance.com/api/v3/ticker/24hr` | 无需 | 现货 24h 行情 |
 | `binance/spot` | `api.binance.com/api/v3/klines` | 无需 | K 线数据 |
-| `binance/alpha` | `binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list` | 无需 | Alpha 早期项目列表 |
-| `binance/alpha` | `binance.com/bapi/defi/v1/public/alpha-trade/ticker` | 无需 | Alpha 代币行情 |
 | `binance/derivatives` | `fapi.binance.com/futures/data/globalLongShortAccountRatio` | 无需 | 全球多空比 |
 | `binance/derivatives` | `fapi.binance.com/futures/data/topLongShortAccountRatio` | 无需 | 顶级账户多空比 |
 | `binance/derivatives` | `fapi.binance.com/fapi/v1/fundingRate` | 无需 | 资金费率 |
@@ -198,7 +194,7 @@ publish_to_square(result['final_article'])
 
 ```
 binance-square-oracle/
-├── collect.py              # 并发数据采集层（12个官方 Skill + 3个第三方 + L4 可选）
+├── collect.py              # 并发数据采集层（11个官方 Skill + 3个第三方 + L4 可选）
 ├── oracle.py               # 核心引擎（2次 LLM 调用，生成文章 + 评分）
 ├── publish.py              # L8 广场发布（可选，square-post v1.1）
 ├── data_6551.py            # L4 增强层（新闻 + KOL，可选）
@@ -237,7 +233,7 @@ binance-square-oracle/
 - **架构重构**：从 9 层流水线（6591 行）精简为 3 个核心文件（约 1500 行），代码量减少 77%
 - **LLM 调用优化**：从最多 10 次减少为固定 2 次，成本降低 80%
 - **并发采集**：所有数据源并发请求，采集时间从 15-20 秒压缩至约 5 秒
-- **官方 Skill 完整覆盖**：通过正确的请求头和 API 端点，成功接入全部 12 个官方 Skill 数据源
+- **官方 Skill 完整覆盖**：通过正确的请求头和 API 端点，成功接入全部 11 个官方 Skill 数据源
 - **SKILL.md 强制声明**：明确列出所有官方 Skill 依赖，确保 AI Agent 如实调用
 - **L4 / L8 可选模块**：保留新闻增强和广场发布功能，有对应 Key 时自动启用
 
@@ -250,7 +246,7 @@ binance-square-oracle/
 
 ### v6.0（L3 + L8 升级）
 
-- L3 升级：集成 `binance/alpha` 早期项目监控和 `binance/derivatives-trading-usds-futures` 合约数据
+- L3 升级：集成 `binance/derivatives-trading-usds-futures` 合约多空比和清算数据
 - L8 升级：`square-post` 升级至官方 v1.1 接口，支持标题优化和 #标签处理
 
 ---

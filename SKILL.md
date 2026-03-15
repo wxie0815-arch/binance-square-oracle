@@ -2,7 +2,7 @@
 name: binance-square-oracle
 version: 1.1
 description: >
-  币安广场智能内容预言机。并发采集 12 个币安官方 Skill 数据源（spot、alpha、
+  币安广场智能内容预言机。并发采集 11 个币安官方 Skill 数据源（spot、
   derivatives-trading-usds-futures、crypto-market-rank、trading-signal、meme-rush），
   通过 2 次 LLM 调用生成带预言机评分的高质量广场文章，支持 9 种文章风格，
   可选 L4 新闻增强和 L8 广场自动发布。
@@ -13,7 +13,6 @@ skills_hub: https://github.com/binance/binance-skills-hub
 dependencies:
   official_skills:
     - binance/spot@1.0.2
-    - binance/alpha@1.0.0
     - binance/derivatives-trading-usds-futures@1.0.0
     - binance-web3/crypto-market-rank@1.0.0
     - binance-web3/trading-signal@1.0.0
@@ -64,13 +63,6 @@ dependencies:
 ```
 GET https://api.binance.com/api/v3/ticker/24hr?symbol={FUTURES_SYMBOL}
 GET https://api.binance.com/api/v3/klines?symbol={FUTURES_SYMBOL}&interval=1d&limit=7
-```
-
-#### 必选：`binance/alpha`（Alpha 早期项目，无需认证）
-
-```
-GET https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list
-GET https://www.binance.com/bapi/defi/v1/public/alpha-trade/ticker?symbol=ALPHA_175USDT
 ```
 
 #### 必选：`binance/derivatives-trading-usds-futures`（合约公开数据，无需认证）

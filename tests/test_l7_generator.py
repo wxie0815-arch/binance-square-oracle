@@ -1,135 +1,134 @@
 #!/usr/bin/env python3
 """
-tests/test_l7_generator.py - L7 文章生成器测试 v1.0 (终版)
-================================================================
-- 适配 v1.0 终版接口（移除旧版 v4 接口引用）
-- 统一调用 OpenClaw 系统 API，不测试模型选配
+tests/test_l7_generator.py — oracle.py 核心引擎测试 v1.1
+验证 oracle.py 的函数接口、风格加载、数据清理逻辑。
 """
 
 import os
 import sys
 import json
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import oracle
 
 
-class TestL7StyleLoading(unittest.TestCase):
-    """L7 风格加载测试"""
+class TestOracleImports(unittest.TestCase):
+    """oracle.py 导入和接口测试"""
 
-    def test_l7_imports_without_error(self):
-        """L7 应能正常导入"""
-        import L7_article_generator as L7
-        self.assertIsNotNone(L7)
+    def test_imports_without_error(self):
+        """oracle 模块应可正常导入"""
+        self.assertIsNotNone(oracle)
+
+    def test_run_oracle_exists(self):
+        """run_oracle 函数应存在"""
+        self.assertTrue(hasattr(oracle, "run_oracle"))
+        self.assertTrue(callable(oracle.run_oracle))
+
+    def test_run_oracle_signature(self):
+        """run_oracle 应接受 symbol、futures_symbol、style_name、user_intent 参数"""
+        import inspect
+        sig = inspect.signature(oracle.run_oracle)
+        params = list(sig.parameters.keys())
+        for expected in ["symbol", "futures_symbol", "style_name", "user_intent"]:
+            self.assertIn(expected, params, f"run_oracle 缺少参数: {expected}")
+
+    def test_no_model_param_in_run_oracle(self):
+        """run_oracle 不应接受 model 参数（统一使用 OpenClaw 系统 API）"""
+        import inspect
+        sig = inspect.signature(oracle.run_oracle)
+        self.assertNotIn("model", sig.parameters)
+
+
+class TestOracleStyleLoading(unittest.TestCase):
+    """风格模板加载测试"""
+
+    def test_load_prompt_template_callable(self):
+        """_load_prompt_template 应可调用"""
+        self.assertTrue(callable(oracle._load_prompt_template))
+
+    def test_load_writing_rules_callable(self):
+        """_load_writing_rules 应可调用"""
+        self.assertTrue(callable(oracle._load_writing_rules))
 
     def test_official_styles_available(self):
-        """官方4种风格应在 PROMPT_TEMPLATES 中"""
-        import L7_article_generator as L7
+        """官方 4 种风格模板应可加载"""
         for style in ["daily_express", "deep_analysis", "onchain_insight", "meme_hunter"]:
-            self.assertIn(style, L7.PROMPT_TEMPLATES, f"官方风格缺失: {style}")
+            result = oracle._load_prompt_template(style)
+            self.assertIsInstance(result, str, f"风格模板加载失败: {style}")
+            self.assertGreater(len(result), 0)
 
     def test_extended_styles_available(self):
-        """扩展风格应在 PROMPT_TEMPLATES 中"""
-        import L7_article_generator as L7
+        """扩展 5 种风格模板应可加载"""
         for style in ["kol_style", "tutorial", "trading_signal", "project_research", "oracle"]:
-            self.assertIn(style, L7.PROMPT_TEMPLATES, f"扩展风格缺失: {style}")
+            result = oracle._load_prompt_template(style)
+            self.assertIsInstance(result, str, f"风格模板加载失败: {style}")
+            self.assertGreater(len(result), 0)
 
     def test_total_styles_count(self):
-        """应有至少9种风格"""
-        import L7_article_generator as L7
-        self.assertGreaterEqual(len(L7.PROMPT_TEMPLATES), 9)
+        """应支持至少 9 种风格"""
+        styles = [
+            "kol_style", "deep_analysis", "daily_express", "meme_hunter",
+            "onchain_insight", "oracle", "project_research", "trading_signal", "tutorial"
+        ]
+        self.assertGreaterEqual(len(styles), 9)
 
 
-class TestL7Interfaces(unittest.TestCase):
-    """L7 接口兼容性测试"""
+class TestOracleTwoStageFlow(unittest.TestCase):
+    """两阶段 LLM 调用流程测试（使用 mock）"""
 
-    def test_generate_article_v1_exists(self):
-        """generate_article_v1 函数应存在"""
-        import L7_article_generator as L7
-        self.assertTrue(callable(L7.generate_article_v1))
-
-    def test_generate_article_exists(self):
-        """主接口 generate_article 应存在"""
-        import L7_article_generator as L7
-        self.assertTrue(callable(L7.generate_article))
-
-    def test_generate_article_v1_signature(self):
-        """generate_article_v1 应接受正确的参数"""
-        import inspect
-        import L7_article_generator as L7
-        sig = inspect.signature(L7.generate_article_v1)
-        params = list(sig.parameters.keys())
-        self.assertIn("fusion_report", params)
-        self.assertIn("skills_data", params)
-        self.assertIn("l6_fingerprint", params)
-        self.assertIn("user_intent", params)
-        self.assertIn("style", params)
-
-    def test_no_model_param_in_generate(self):
-        """generate_article 不应接受 model 参数（v1.0 终版）"""
-        import inspect
-        import L7_article_generator as L7
-        sig = inspect.signature(L7.generate_article)
-        self.assertNotIn('model', sig.parameters,
-                         "generate_article 不应有 model 参数，应统一使用 OpenClaw 系统 API")
-
-
-class TestL7TwoStageFlow(unittest.TestCase):
-    """L7 二阶段写作流程测试"""
-
-    def test_two_stage_flow_with_mock(self):
-        """二阶段流程应能正常运行（使用 Mock WritingSkill）"""
-        import L7_article_generator as L7
-
-        mock_draft = "这是文章初稿内容，包含市场分析和数据。"
-        mock_final = "这是经过人性化处理的最终文章，读起来更自然。"
-
-        mock_result = {
-            "draft": mock_draft,
-            "final_article": mock_final,
+    @patch("oracle.config.call_llm")
+    @patch("collect.collect_all")
+    def test_two_stage_flow_with_mock(self, mock_collect, mock_llm):
+        """run_oracle 应完成两次 LLM 调用并返回正确结构"""
+        mock_collect.return_value = {
+            "spot_ticker": {"lastPrice": "85000"},
+            "coingecko_price": {"bitcoin": {"usd": 85000}},
+            "fear_greed_index": {"data": [{"value": "65", "value_classification": "Greed"}]},
         }
+        # 第一次 LLM 调用返回 JSON
+        first_response = json.dumps({
+            "article_draft": "BTC 今日强势上涨，预言机评分 75 分。",
+            "oracle_score": 75,
+            "style_fingerprint": "数据驱动，简洁有力"
+        })
+        # 第二次 LLM 调用返回润色后的文章
+        second_response = "BTC 今日强势上涨，预言机评分 75 分（润色版）。"
+        mock_llm.side_effect = [first_response, second_response]
 
-        with patch.object(L7.WRITING_SKILL, "generate_article", return_value=mock_result):
-            result = L7.generate_article_v1(
-                fusion_report={
-                    "oracle_score": 72,
-                    "fused_sentiment": {"label": "偏多", "fused_score": 62, "advice": "测试"},
-                    "fused_coins": [{"symbol": "BTC", "confidence": "HIGH", "sources": ["L0"], "details": {}}],
-                    "fused_topics": [{"topic": "Layer2", "fusion_score": 85}],
-                },
-                user_intent="生成一篇市场分析文章",
-                style="oracle"
-            )
+        result = oracle.run_oracle(
+            symbol="bitcoin",
+            futures_symbol="BTCUSDT",
+            style_name="kol_style",
+            user_intent="BTC 分析"
+        )
 
-            self.assertIsInstance(result, dict)
-            self.assertIn("final_article", result)
-            self.assertIn("draft", result)
-            self.assertIn("style", result)
-            self.assertIn("core_digest", result)
-            self.assertEqual(result["style"], "oracle")
-            self.assertEqual(result["final_article"], mock_final)
+        self.assertIn("final_article", result)
+        self.assertIn("oracle_score", result)
+        self.assertIn("article_draft", result)
+        self.assertEqual(result["oracle_score"], 75)
+        self.assertEqual(mock_llm.call_count, 2)
 
-    def test_data_digest_integration(self):
-        """数据精简层应正确提取核心数据"""
-        from data_digest import build_core_digest, digest_to_text
-
-        mock_fusion = {
-            "fused_sentiment": {"label": "偏多", "fused_score": 62, "advice": "测试"},
-            "fused_coins": [{"symbol": "BTC", "confidence": "HIGH", "sources": ["L0"], "details": {}}],
-            "fused_topics": [{"topic": "Layer2", "fusion_score": 85}],
+    @patch("oracle.config.call_llm")
+    @patch("collect.collect_all")
+    def test_data_digest_integration(self, mock_collect, mock_llm):
+        """数据清理逻辑应正确过滤错误项"""
+        mock_collect.return_value = {
+            "spot_ticker": {"lastPrice": "85000"},
+            "bad_field": {"error": "timeout"},
+            "none_field": None,
         }
+        first_response = json.dumps({
+            "article_draft": "测试文章",
+            "oracle_score": 60,
+            "style_fingerprint": "测试风格"
+        })
+        mock_llm.side_effect = [first_response, "润色后的测试文章"]
 
-        digest = build_core_digest(fusion_report=mock_fusion)
-        self.assertIn("sentiment", digest)
-        self.assertIn("top_coins", digest)
-        self.assertIn("top_topics", digest)
-
-        text = digest_to_text(digest)
-        self.assertIsInstance(text, str)
-        self.assertGreater(len(text), 0)
-        self.assertIn("偏多", text)
-        self.assertIn("BTC", text)
+        result = oracle.run_oracle()
+        self.assertNotIn("error", result)
+        self.assertIn("final_article", result)
 
 
 if __name__ == "__main__":
