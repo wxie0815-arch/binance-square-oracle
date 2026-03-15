@@ -78,9 +78,17 @@ def get_spot_klines(symbol="BTCUSDT", interval="1d", limit=7):
 # 官方 Skill 2 — binance/alpha
 # Alpha 早期项目列表，无需认证
 # ===========================================================================
-def get_alpha_token_list():
+def get_alpha_token_list(top_n=20):
+    """Alpha 早期项目列表，按 score 降序取 Top N（默认20）"""
     url = "https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list"
-    return _http_get(url, headers=BAPI_HEADERS)
+    raw = _http_get(url, headers=BAPI_HEADERS)
+    if isinstance(raw, dict) and "data" in raw:
+        items = raw["data"] if isinstance(raw["data"], list) else []
+        items_sorted = sorted(items, key=lambda x: x.get("score", 0), reverse=True)
+        raw["data"] = items_sorted[:top_n]
+        raw["_total"] = len(items)
+        raw["_returned"] = len(raw["data"])
+    return raw
 
 def get_alpha_ticker(symbol="ALPHA_175USDT"):
     url = f"https://www.binance.com/bapi/defi/v1/public/alpha-trade/ticker?symbol={symbol}"
@@ -277,6 +285,29 @@ async def collect_all_data(symbol="bitcoin", futures_symbol="BTCUSDT"):
 def collect_all(symbol="bitcoin", futures_symbol="BTCUSDT"):
     """同步包装函数，供 oracle.py 和测试直接调用。"""
     return asyncio.run(collect_all_data(symbol, futures_symbol))
+
+
+# ===========================================================================
+# fetch_* 别名（兼容 oracle.py 和测试脚本）
+# ===========================================================================
+fetch_spot_ticker          = get_spot_ticker
+fetch_spot_klines          = get_spot_klines
+fetch_alpha_token_list     = get_alpha_token_list
+fetch_alpha_ticker         = get_alpha_ticker
+fetch_futures_ls_ratio     = get_futures_long_short_ratio
+fetch_futures_top_ratio    = get_futures_top_account_ratio
+fetch_futures_funding_rate = get_futures_funding_rate
+fetch_futures_open_interest= get_futures_open_interest
+fetch_social_hype_rank     = get_social_hype_rank
+fetch_alpha_rank           = get_alpha_rank
+fetch_trending_tokens      = get_trending_tokens
+fetch_smart_money_inflow   = get_smart_money_inflow
+fetch_trading_signal       = get_trading_signals
+fetch_meme_new             = get_meme_rush_new
+fetch_meme_migrated        = get_meme_rush_migrated
+fetch_coingecko_price      = get_coingecko_price
+fetch_blockchain_stats     = get_blockchain_info
+fetch_fear_greed           = get_fear_greed_index
 
 
 if __name__ == "__main__":
