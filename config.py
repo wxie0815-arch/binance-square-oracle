@@ -23,10 +23,12 @@ PROJECT_DESC = "币安广场流量预言机 — 基于 Binance Skills Hub 的智
 # ---------------------------------------------------------------------------
 # 路径配置
 # ---------------------------------------------------------------------------
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 WORKSPACE = os.environ.get("WORKSPACE", "/home/ubuntu/workspace")
 CACHE_DIR = os.path.join(WORKSPACE, "cache")
 LOG_DIR = os.path.join(WORKSPACE, "logs")
 SAVE_DIR = os.path.join(WORKSPACE, "output")
+MEMORY_DIR = os.path.join(WORKSPACE, "memory")
 
 # ---------------------------------------------------------------------------
 # API Keys (从 OpenClaw 配置系统读取)
@@ -47,6 +49,7 @@ HAS_DERIVATIVES_DATA = True
 # ---------------------------------------------------------------------------
 API_6551_BASE = "https://api.6551.io/v1"
 SQUARE_POST_URL = "https://www.binance.com/bapi/composite/v1/public/pgc/openApi/content/add"
+SQUARE_POST_BASE = "https://www.binance.com/square/post"
 ALPHA_BASE_URL = "https://www.binance.com/bapi/defi/v1/public/alpha-trade"
 ALPHA_TOKEN_LIST_URL = "https://www.binance.com/bapi/defi/v1/public/wallet-direct/buw/wallet/cex/alpha/all/token/list"
 FAPI_BASE_URL = "https://fapi.binance.com/fapi/v1"
