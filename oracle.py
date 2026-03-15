@@ -19,6 +19,8 @@ import re
 
 import config
 
+MAX_RETRIES = 2  # JSON 解析失败时的最大重试次数
+
 # ---------------------------------------------------------------------------
 # 核心 Prompt 模板
 # ---------------------------------------------------------------------------
@@ -40,12 +42,18 @@ Analyze the real-time market data provided below and write a high-quality, engag
 {writing_rules}
 
 ## 5. Your Output (JSON format ONLY)
-Provide your response as a single JSON object with three fields:
-- `article_draft`: The initial draft of the article (string).
-- `oracle_score`: An integer score from 0 to 100, representing your confidence in the market trend based on the data. 0 is extremely bearish, 100 is extremely bullish.
-- `style_fingerprint`: A concise, one-sentence summary of the author's writing style based on the provided style prompt.
+Respond with ONLY a valid JSON object. No extra text before or after.
+Keep `article_draft` concise (under 800 characters) to avoid truncation.
 
-**Do not add any extra text or explanations outside the JSON object.**
+```json
+{{
+  "article_draft": "<your article here, max 800 chars>",
+  "oracle_score": <integer 0-100>,
+  "style_fingerprint": "<one sentence describing the writing style>"
+}}
+```
+
+**CRITICAL: The JSON must be complete and valid. Do not truncate.**
 """
 
 HUMANIZER_PROMPT = """
@@ -62,6 +70,95 @@ Revise the following article draft to make it sound more natural, human, and les
 ## Your Output
 Provide only the revised, final article text. Do not add any extra text or explanations.
 """
+
+# ---------------------------------------------------------------------------
+# JSON 解析辅助函数
+# ---------------------------------------------------------------------------
+def _parse_llm_json(raw_text):
+    """
+    尝试从 LLM 响应中解析 JSON。
+    支持多种格式：纯 JSON、```json 代码块、内嵌 JSON 等。
+    """
+    if not raw_text or not raw_text.strip():
+        return None
+
+    # 方法1: 尝试直接解析整个响应
+    try:
+        return json.loads(raw_text.strip())
+    except json.JSONDecodeError:
+        pass
+
+    # 方法2: 提取 ```json ... ``` 代码块
+    match = re.search(r'```json\s*\n(.*?)\n```', raw_text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(1).strip())
+        except json.JSONDecodeError:
+            pass
+
+    # 方法3: 提取第一个 { ... } 块
+    brace_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+    if brace_match:
+        try:
+            return json.loads(brace_match.group(0))
+        except json.JSONDecodeError:
+            pass
+
+    # 方法4: 尝试修复截断的 JSON（添加缺失的结尾）
+    # 找到最后一个完整的字段
+    truncated = raw_text.strip()
+    if truncated.startswith('{'):
+        # 尝试修复：找到最后一个完整的属性
+        for end_pattern in [r'"oracle_score"\s*:\s*(\d+)', r'"style_fingerprint"\s*:\s*"([^"]*?)"']:
+            m = re.search(end_pattern, truncated)
+            if m:
+                # 找到了部分内容，返回 None 以触发重试
+                pass
+
+    return None
+
+
+def _extract_draft_fallback(raw_text):
+    """从截断的 LLM 响应中尝试提取 article_draft"""
+    # 尝试提取 article_draft 字段的内容
+    match = re.search(r'"article_draft"\s*:\s*"(.*?)(?:",|"\s*,|"\s*})', raw_text, re.DOTALL)
+    if match:
+        draft = match.group(1)
+        # 处理 JSON 转义字符
+        draft = draft.replace('\\n', '\n').replace('\\"', '"').replace('\\\\', '\\')
+        return draft.strip()
+
+    # 如果无法提取，尝试获取 article_draft 开头后的内容（即使是截断的）
+    match2 = re.search(r'"article_draft"\s*:\s*"(.*)', raw_text, re.DOTALL)
+    if match2:
+        draft = match2.group(1)
+        # 移除末尾不完整的部分
+        draft = draft.rstrip('\n').rstrip(',')
+        if draft.endswith('"'):
+            draft = draft[:-1]
+        draft = draft.replace('\\n', '\n').replace('\\"', '"').replace('\\\\', '\\')
+        # 确保至少有 50 个字符
+        if len(draft.strip()) >= 50:
+            return draft.strip() + "..."
+    return None
+
+
+def _extract_score_fallback(raw_text):
+    """从截断的 LLM 响应中尝试提取 oracle_score"""
+    match = re.search(r'"oracle_score"\s*:\s*(\d+)', raw_text)
+    if match:
+        score = int(match.group(1))
+        return max(0, min(100, score))
+    return 50  # 默认中性评分
+
+
+def _extract_fingerprint_fallback(raw_text):
+    """从截断的 LLM 响应中尝试提取 style_fingerprint"""
+    match = re.search(r'"style_fingerprint"\s*:\s*"([^"]{10,}?)"', raw_text)
+    if match:
+        return match.group(1)
+    return "Style-driven crypto analysis"
+
 
 # ---------------------------------------------------------------------------
 # 核心函数
@@ -116,26 +213,39 @@ def generate_article(market_data, style_name="kol_style", user_intent="BTC analy
         writing_rules=writing_rules,
     )
 
-    response1_raw = config.call_llm(
-        system_prompt="You are a crypto analyst.",
-        user_prompt=prompt1
-    )
+    article_draft = None
+    oracle_score = 50
+    style_fingerprint = ""
+    last_raw = ""
 
-    try:
-        # 提取 JSON 内容
-        match = re.search(r"```json\n(.*?)\n```", response1_raw, re.DOTALL)
-        if match:
-            json_str = match.group(1)
+    for attempt in range(1, MAX_RETRIES + 2):  # 最多尝试 MAX_RETRIES+1 次
+        if attempt > 1:
+            print(f"[oracle] Retry {attempt-1}/{MAX_RETRIES}: re-requesting LLM...")
+
+        response1_raw = config.call_llm(
+            system_prompt="You are a crypto analyst. Always respond with valid, complete JSON only.",
+            user_prompt=prompt1
+        )
+        last_raw = response1_raw
+
+        parsed = _parse_llm_json(response1_raw)
+        if parsed is not None:
+            article_draft = parsed.get("article_draft", "")
+            oracle_score = parsed.get("oracle_score", 50)
+            style_fingerprint = parsed.get("style_fingerprint", "")
+            break
         else:
-            json_str = response1_raw
+            print(f"[oracle] Attempt {attempt}: JSON parse failed.")
 
-        response1_json = json.loads(json_str)
-        article_draft = response1_json["article_draft"]
-        oracle_score = response1_json["oracle_score"]
-        style_fingerprint = response1_json["style_fingerprint"]
-    except (json.JSONDecodeError, KeyError) as e:
-        print(f"[oracle] LLM call 1 failed: cannot parse JSON. Raw response:\n{response1_raw[:500]}")
-        return {"error": "Failed to parse LLM response", "raw_response": response1_raw}
+    if article_draft is None:
+        print(f"[oracle] All {MAX_RETRIES+1} attempts failed. Attempting fallback extraction...")
+        # Fallback：尝试从截断的响应中提取部分内容
+        article_draft = _extract_draft_fallback(last_raw)
+        if not article_draft:
+            print(f"[oracle] Fallback failed. Raw response:\n{last_raw[:500]}")
+            return {"error": "Failed to parse LLM response after retries", "raw_response": last_raw}
+        oracle_score = _extract_score_fallback(last_raw)
+        style_fingerprint = _extract_fingerprint_fallback(last_raw)
 
     print(f"[oracle] Draft complete. Oracle Score: {oracle_score}/100")
 
