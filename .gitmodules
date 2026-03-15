@@ -1,0 +1,3 @@
+[submodule "skills/crypto-content-writer"]
+	path = skills/crypto-content-writer
+	url = https://github.com/wxie0815-arch/crypto-content-writer.git
