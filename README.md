@@ -5,42 +5,69 @@
 [![License](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 [![Skills Hub](https://img.shields.io/badge/Binance-Skills%20Hub-orange)](https://github.com/binance/binance-skills-hub)
 
-Binance Square Oracle is an OpenClaw-native article orchestration skill for the Binance ecosystem.
-It keeps the project's original idea intact:
+**Binance Square Oracle** 是一个面向币安生态的内容生成型 Agent Skill。  
+它的目标很明确：
 
-- route by article style
-- collect only the data needed for that style
-- generate a publish-ready Binance Square article
-- output an `oracle_score`
-- optionally publish through Binance Square
+- 按文章风格智能路由数据
+- 优先对接币安官方 Skills Hub 能力
+- 自动生成可用于币安广场发布的内容
+- 给出 `oracle_score` 市场信心评分
+- 在可用时直接对接 Binance Square 发布
 
-The project now has two clear operating modes:
+这个仓库现在分成两种运行方式：
 
-1. Recommended: OpenClaw-native mode
-2. Optional: local Python prototype mode
+1. **推荐模式：OpenClaw 原生 Skill 模式**
+2. **备用模式：本地 Python 原型模式**
 
-## Why This Shape Fits The Competition Better
+---
 
-The competition-facing path should align with the official ecosystem:
+## 项目定位
 
-- OpenClaw handles model access natively
-- official Binance Skills Hub skills provide the data and publishing surface
-- this repository provides the orchestration logic, style system, and article packaging
+如果你要参加币安 Agent 比赛，这个项目的定位不是“单纯抓数据”，而是一个**从币安生态数据到币安广场文章的一键编排器**。
 
-That is much more reliable than hardcoding a private model endpoint inside the skill.
+它保留了你原本最有辨识度的产品思路：
 
-## Preserved Product Features
+- 多风格写作
+- 按风格选择最合适的数据源
+- 输出发布就绪的广场文案
+- 给出结构化评分和风格指纹
+- 可选自动发布
 
-- 9 built-in article styles
-- DIY custom prompt styles in `prompts/`
-- style-based data routing
-- optional L4 news/KOL enhancement through 6551
-- optional L8-style publishing flow through Binance Square
-- Binance Square trending monitor sub-skill
+---
 
-## Official Binance Capability Map
+## 当前功能
 
-The recommended workflow prefers official Binance skills:
+### 1. 多风格内容生成
+
+内置 9 种风格：
+
+- `daily_express`
+- `deep_analysis`
+- `onchain_insight`
+- `meme_hunter`
+- `kol_style`
+- `oracle`
+- `project_research`
+- `trading_signal`
+- `tutorial`
+
+同时支持 DIY 风格。你只需要在 [`prompts/`](/D:/文档/Playground/repo_check/prompts) 下新增一个 `.md` 文件，就可以扩展自己的写作风格。
+
+### 2. 按风格智能路由数据
+
+不同风格不会盲目全量抓取数据，而是按需要调用不同数据能力。
+
+例如：
+
+- `deep_analysis` 更偏向现货、合约、Alpha、链上信号和审计
+- `meme_hunter` 更偏向 meme-rush、市场热度、交易信号
+- `tutorial` 只走更轻量的基础市场信息
+
+这样更适合比赛展示，因为逻辑清晰，也更像一个真正“有编排能力”的 Agent。
+
+### 3. 对接币安官方 Skills Hub 思路
+
+推荐的 OpenClaw 原生执行路径优先使用这些官方能力：
 
 - `binance/spot`
 - `binance/derivatives-trading-usds-futures`
@@ -53,30 +80,67 @@ The recommended workflow prefers official Binance skills:
 - `binance-web3/query-address-info`
 - `binance/square-post`
 
-Reference sources:
+参考：
 
 - [Binance Skills Hub](https://github.com/binance/binance-skills-hub)
 - [Build Your Own Binance Square AI Agent Skill](https://academy.binance.com/ky-KG/articles/build-your-own-binance-square-ai-agent-skill)
 
-## Built-in Styles
+### 4. 输出发布就绪文章
 
-| Style | Best For | Core Data Route |
+生成结果的目标不是“草稿笔记”，而是尽量接近可以直接上广场的内容包，核心字段包括：
+
+- `article_draft`
+- `final_article`
+- `oracle_score`
+- `style_fingerprint`
+- `publish_result`（启用发布时）
+
+### 5. Oracle 评分机制
+
+项目会基于采集到的数据和风格要求生成一个 `0-100` 的 `oracle_score`，用于表达当前内容中隐含的市场信心强弱。
+
+### 6. 可选增强能力
+
+- **L4 增强**：通过 `TOKEN_6551` 接入热点新闻和 KOL 动态
+- **L8 风格发布链路**：通过 `SQUARE_API_KEY` 直接发布到 Binance Square
+
+### 7. Binance Square 热门监控子 Skill
+
+仓库内还保留了 [`skills/binance-square-monitor`](/D:/文档/Playground/repo_check/skills/binance-square-monitor) 这个子 skill，可用于监控币安广场热门帖子、互动数据和流量变化。
+
+---
+
+## 风格与数据映射
+
+| 风格 | 适用场景 | 核心数据能力 |
 | :--- | :--- | :--- |
-| `daily_express` | quick market recap | spot, alpha, market-rank, token-info |
-| `deep_analysis` | full thesis write-up | spot, derivatives, alpha, trading-signal, token-info, token-audit |
-| `onchain_insight` | wallet and smart-money angle | trading-signal, address-info, token-info, token-audit |
-| `meme_hunter` | meme discovery | meme-rush, trading-signal, market-rank, token-info, token-audit |
-| `kol_style` | opinionated short analysis | spot, trading-signal, market-rank |
-| `oracle` | directional call | spot, derivatives, trading-signal, market-rank |
-| `project_research` | token/project intro | token-info, token-audit, alpha, market-rank |
-| `trading_signal` | tactical setup | spot, derivatives, trading-signal, token-audit |
-| `tutorial` | educational content | spot, market-rank |
+| `daily_express` | 每日市场速递 | spot / alpha / market-rank / token-info |
+| `deep_analysis` | 深度分析 | spot / derivatives / alpha / trading-signal / token-info / token-audit |
+| `onchain_insight` | 链上洞察 | trading-signal / address-info / token-info / token-audit |
+| `meme_hunter` | Meme 追踪 | meme-rush / trading-signal / market-rank / token-info / token-audit |
+| `kol_style` | KOL 观点输出 | spot / trading-signal / market-rank |
+| `oracle` | 市场预判 | spot / derivatives / trading-signal / market-rank |
+| `project_research` | 项目研究 | token-info / token-audit / alpha / market-rank |
+| `trading_signal` | 交易观点 | spot / derivatives / trading-signal / token-audit |
+| `tutorial` | 教育科普 | spot / market-rank |
 
-DIY styles can be added by dropping a new `.md` file into `prompts/`.
+---
 
-## OpenClaw-Native Usage
+## 如何使用
 
-Install this repository as a skill in OpenClaw, then ask for outputs such as:
+### 方式一：OpenClaw 原生 Skill 模式
+
+这是目前**最推荐**的比赛提交和演示方式。
+
+#### 安装
+
+把这个仓库作为 Skill 安装到 OpenClaw 中：
+
+```text
+https://github.com/wxie0815-arch/binance-square-oracle
+```
+
+#### 使用示例
 
 ```text
 Use deep_analysis style to write a Binance Square article about BTC.
@@ -90,64 +154,98 @@ Use meme_hunter style to find the hottest meme setup and prepare a publish-ready
 Use prompts/my_style.md as my custom style and produce a Square-ready article on ETH.
 ```
 
-In this mode:
+#### 适合的演示路径
 
-- the root `SKILL.md` is the main product
-- OpenClaw supplies the model
-- official Binance skills should be preferred for data and publishing
+如果你要做比赛 Demo，建议直接展示以下链路：
 
-## Local Python Prototype
+1. 用户给出一个主题或币种
+2. Agent 自动选择风格对应的数据路径
+3. 生成 `article_draft`
+4. 输出 `oracle_score`
+5. 润色成 `final_article`
+6. 可选调用发布能力
 
-The Python files remain as a prototype and backup path for local experiments.
-They no longer assume a special OpenClaw-only hidden endpoint.
+#### 这个模式的优点
 
-### Local requirements
+- 更贴近 OpenClaw 官方生态
+- 更贴近 Binance Skills Hub 官方叙事
+- 更适合评审理解“这是一个 Agent Skill，而不是单纯 Python 脚本”
+
+---
+
+### 方式二：本地 Python 原型模式
+
+这个模式适合你自己本地调试、验证 prompt、测试写作结果。
+
+#### 依赖
 
 - Python 3.8+
 - `pip install -r requirements.txt`
-- an OpenAI-compatible API base URL and API key
 
-### Environment variables
+#### 环境变量
 
-Copy `.env.example` to `.env` and configure what you need:
+复制 `.env.example` 为 `.env`，然后按需填写：
 
 - `OPENAI_API_KEY`
 - `OPENAI_BASE_URL`
 - `OPENAI_MODEL`
-- optional `SQUARE_API_KEY`
-- optional `TOKEN_6551`
-- optional `API_6551_BASE`
+- `SQUARE_API_KEY`
+- `TOKEN_6551`
+- `API_6551_BASE`
 
-Example:
+#### 最小调用示例
 
 ```bash
-python3 -c "from oracle import run_oracle; print(run_oracle(style_name='deep_analysis')['final_article'])"
+python3 -c "from oracle import run_oracle; r = run_oracle(style_name='deep_analysis'); print(r['final_article'])"
 ```
 
-## Repository Layout
+#### 启用发布
+
+如果你配置了 `SQUARE_API_KEY`，则本地原型中的 [`publish.py`](/D:/文档/Playground/repo_check/publish.py) 可以把生成结果发到币安广场。
+
+---
+
+## 当前仓库结构
 
 ```text
 binance-square-oracle/
-├── SKILL.md                         # main OpenClaw-native orchestration skill
-├── prompts/                         # built-in and DIY article styles
-├── references/writing_rules.md      # local writing baseline rules
-├── collect.py                       # local Python data collection prototype
-├── oracle.py                        # local Python article generator prototype
-├── publish.py                       # local Python Binance Square publishing helper
-├── skills/binance-square-monitor/   # optional monitor sub-skill
-└── tests/                           # smoke and integration helpers
+├── SKILL.md
+├── prompts/
+├── references/
+│   ├── writing_rules.md
+│   └── competition_notes.md
+├── collect.py
+├── oracle.py
+├── publish.py
+├── skills/
+│   └── binance-square-monitor/
+└── tests/
 ```
 
-## Validation Notes
+### 主要文件说明
 
-Recent cleanup focused on competition readiness:
+- [`SKILL.md`](/D:/文档/Playground/repo_check/SKILL.md)：主 Skill 定义，OpenClaw 原生模式的核心入口
+- [`collect.py`](/D:/文档/Playground/repo_check/collect.py)：本地原型的数据采集与风格路由
+- [`oracle.py`](/D:/文档/Playground/repo_check/oracle.py)：两阶段文章生成逻辑
+- [`publish.py`](/D:/文档/Playground/repo_check/publish.py)：发布辅助模块
+- [`references/writing_rules.md`](/D:/文档/Playground/repo_check/references/writing_rules.md)：写作规则基线
+- [`references/competition_notes.md`](/D:/文档/Playground/repo_check/references/competition_notes.md)：比赛对齐说明
 
-- removed the hard dependency on a missing submodule for writing rules
-- documented an OpenClaw-native execution path
-- corrected broken local script assumptions
-- kept the original style system and data-route concept
+---
 
-## Attribution
+## 当前状态
+
+这版仓库已经完成了针对比赛可用性的重构：
+
+- 去掉了缺失 submodule 的硬依赖
+- 去掉了对隐藏 OpenClaw 私有端点的依赖假设
+- 明确区分了 OpenClaw 原生模式和本地原型模式
+- 保留了多风格路由、生成、评分和发布能力
+- 补齐了比赛展示所需的文档结构
+
+---
+
+## 项目作者
 
 Project author: `wxie0815-arch`
 
