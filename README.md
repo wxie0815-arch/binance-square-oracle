@@ -17,11 +17,35 @@
 | **智能数据路由** | 根据创作风格，**仅调用必要的数据源**，告别全量采集，极大提升运行效率和内容相关性。 |
 | **9+ 种创作风格** | 内置 9 种专业风格，覆盖从深度分析到 Meme 追踪的全场景。 |
 | **DIY 自定义风格** | 支持用户创建自己的 `.md` 风格文件，实现无限的创作可能性。 |
-| **2 次 LLM 调用** | 第一次：分析数据 + 生成初稿 + 预言机评分；第二次：去 AI 味润色，确保内容真实自然。 |
+| **2 次 LLM 调用** | 第一次：分析数据 + 生成初稿 + 预言机评分；第二次：去 AI 味润色，确保内容真实自然。LLM 由 OpenClaw 平台内置提供，无需用户配置。 |
 | **预言机评分** | LLM 根据多维度数据给出 0-100 分市场信心评分，为您的判断提供参考。 |
 | **L4 新闻增强（可选）** | 接入 6551 API，获取高热新闻和 KOL 推文，有 `TOKEN_6551` 时自动启用。 |
 | **L8 广场发布（可选）** | 对接官方 `square-post` 接口，有 `SQUARE_API_KEY` 时自动发布文章。 |
-| **零配置开箱即用** | 在 OpenClaw 环境下，安装即可使用，无需额外安装币安官方 Skills Hub。 |
+| **零配置开箱即用** | 在 OpenClaw 环境下，安装即可使用，无需额外安装币安官方 Skills Hub，也无需配置任何大模型 API Key。 |
+
+---
+
+## 依赖说明
+
+### Python 依赖
+
+| 依赖包 | 用途 |
+| :--- | :--- |
+| `requests` | HTTP 请求（备用） |
+| `python-dotenv` | 加载 `.env` 环境变量 |
+
+> **注意**: 本项目**不依赖** `openai` 或任何第三方大模型 SDK。所有 LLM 推理能力由 OpenClaw 平台内置提供，用户无需配置任何大模型 API Key。数据采集层使用 Python 标准库 `urllib` 实现，无额外 HTTP 依赖。
+
+### 系统依赖
+
+| 依赖 | 版本要求 | 说明 |
+| :--- | :--- | :--- |
+| Python | 3.8+ | 核心运行环境 |
+| pip | 任意 | 安装 Python 依赖 |
+
+### LLM 能力
+
+本预言机的文章生成依赖 LLM 推理能力。**LLM 完全由 OpenClaw 平台内置提供**，通过平台的 Chat Completions 端点完成调用。用户无需配置任何大模型 API Key、端点地址或模型名称。
 
 ---
 
@@ -35,13 +59,13 @@
 | :--- | :--- | :--- |
 | `binance/spot` | 24h Ticker、7 日 K 线 | 现货行情数据 |
 | `binance/derivatives-trading-usds-futures` | 全球多空比、顶级账户多空比、资金费率、未平仓合约 | 合约市场数据 |
-| `binance/alpha` | Alpha 代币行情、聚合交易、交易所信息 | Alpha 代币发现 |
-| `binance-web3/crypto-market-rank` | 热门代币排名、涨跌幅排行 | 市场排名数据 |
-| `binance-web3/trading-signal` | 智能钱买卖信号 | 链上交易信号 |
-| `binance-web3/meme-rush` | Meme 叙事追踪、热门 Meme 排行 | Meme 币发现 |
-| `binance-web3/query-token-info` | 代币搜索、详情查询 | 代币基础信息 |
-| `binance-web3/query-token-audit` | 代币安全审计 | 合约安全检测 |
-| `binance-web3/query-address-info` | 链上地址持仓查询 | 鲸鱼地址分析 |
+| `binance/alpha` | Alpha 代币列表、代币行情 | Alpha 代币发现 |
+| `binance-web3/crypto-market-rank` | 社交热度排名、热门代币、智能钱流入、Meme 排行 | 市场排名数据 |
+| `binance-web3/trading-signal` | 智能钱买卖信号（Solana / BSC） | 链上交易信号 |
+| `binance-web3/meme-rush` | 新 Meme 币、已迁移 Meme、话题叙事追踪 | Meme 币发现 |
+| `binance-web3/query-token-info` | 代币搜索、动态信息、元数据 | 代币基础信息 |
+| `binance-web3/query-token-audit` | 代币合约安全审计 | 合约安全检测 |
+| `binance-web3/query-address-info` | 链上地址活跃持仓查询 | 鲸鱼地址分析 |
 
 ### 需认证 Skill（已集成接口，用户按需启用）
 
@@ -56,6 +80,14 @@
 | :--- | :--- | :--- |
 | `binance/square-post` | 广场自动发布 | 需配置 `SQUARE_API_KEY` |
 
+### 第三方补充数据（公开接口，无需认证）
+
+| 数据源 | 集成能力 | 用途 |
+| :--- | :--- | :--- |
+| CoinGecko | 实时价格、24h 成交量、7 日涨跌 | 价格交叉验证 |
+| Blockchain.info | 全网算力、交易量、区块信息 | 链上基础数据 |
+| Alternative.me | 恐惧贪婪指数（7 日历史） | 市场情绪指标 |
+
 ---
 
 ## 快速开始（OpenClaw 环境）
@@ -68,7 +100,7 @@
 https://github.com/wxie0815-arch/binance-square-oracle
 ```
 
-安装完成后，预言机**立即可用**，无需额外安装币安官方 Skills Hub。
+安装完成后，预言机**立即可用**，无需额外安装币安官方 Skills Hub，也无需配置任何大模型 API Key。
 
 ### 第二步：配置增强功能（可选）
 
@@ -79,7 +111,7 @@ https://github.com/wxie0815-arch/binance-square-oracle
 | `SQUARE_API_KEY` | L8 广场自动发布 | 启用后，生成的文章将自动发布到您的币安广场账号 |
 | `TOKEN_6551` | L4 新闻 + KOL 信号增强 | 提供实时高热新闻和 KOL 动态，丰富文章数据维度 |
 
-> **提示**: 如果不配置以上 Key，预言机将以基础模式运行，自动跳过这些增强功能，不影响核心文章的生成。
+> **提示**: 如果不配置以上 Key，预言机将以基础模式运行，自动跳过这些增强功能，不影响核心文章的生成。**不需要配置任何大模型 API Key。**
 
 ### 第三步：开始创作
 
@@ -105,6 +137,7 @@ https://github.com/wxie0815-arch/binance-square-oracle
 ┌─────────────────────────────────────────────────────────────────┐
 │                   Binance Square Oracle v1.0                    │
 │              原生集成 12 个币安官方 Skill 数据能力                │
+│           LLM 由 OpenClaw 平台内置提供，无需用户配置              │
 └─────────────────────────────────────────────────────────────────┘
 
            Style: "deep_analysis" / "meme_hunter" / "my_style.md"
@@ -123,6 +156,7 @@ https://github.com/wxie0815-arch/binance-square-oracle
                               ▼ 结构化市场数据 (仅包含风格所需数据)
 ┌──────────────────────────────────────────────────────────────────┐
 │  oracle.py — 2 次 LLM 调用核心引擎                                │
+│  (LLM 由 OpenClaw 平台内置提供，无需任何 API Key)                 │
 │                                                                  │
 │  第一次 LLM 调用（分析 + 写作）：                                  │
 │    输入：(风格化数据) + (风格模板 prompts/) + (写作规则)           │
@@ -152,14 +186,14 @@ https://github.com/wxie0815-arch/binance-square-oracle
 
 | 风格名称 | 适用场景 | 调用的官方 Skill 数据能力 |
 | :--- | :--- | :--- |
-| `daily_express` | 每日市场速递 | spot、alpha、crypto-market-rank、trading-signal |
+| `daily_express` | 每日市场速递 | spot、alpha、crypto-market-rank、query-token-info |
 | `deep_analysis` | 代币全方位拆解 | spot、derivatives、alpha、trading-signal、query-token-info、query-token-audit |
-| `onchain_insight` | 鲸鱼在买什么 | trading-signal、query-address-info、query-token-info、crypto-market-rank |
-| `meme_hunter` | 捕捉下一个叙事 | meme-rush、trading-signal、crypto-market-rank |
+| `onchain_insight` | 鲸鱼在买什么 | trading-signal、query-address-info、query-token-info、query-token-audit |
+| `meme_hunter` | 捕捉下一个叙事 | meme-rush、trading-signal、crypto-market-rank、query-token-info、query-token-audit |
 | `kol_style` | KOL 观点输出 | spot、trading-signal、crypto-market-rank |
-| `oracle` | 市场预测 | spot、derivatives、trading-signal、query-token-info |
+| `oracle` | 市场预测 | spot、derivatives、trading-signal、crypto-market-rank |
 | `project_research` | 新项目介绍 | query-token-info、query-token-audit、alpha、crypto-market-rank |
-| `trading_signal` | 交易建议 | spot、derivatives、trading-signal |
+| `trading_signal` | 交易建议 | spot、derivatives、trading-signal、query-token-audit |
 | `tutorial` | 科普教育 | spot、crypto-market-rank |
 
 ### DIY 自定义风格
@@ -182,16 +216,36 @@ binance-square-oracle/
 ├── oracle.py               # 核心引擎（2 次 LLM 调用，生成文章 + 评分）
 ├── publish.py              # L8 广场发布（可选，调用 square-post API）
 ├── config.py               # 统一配置（版本号、目录、LLM 调用）
-├── requirements.txt        # Python 依赖
-├── .env.example            # 环境变量模板
+├── requirements.txt        # Python 依赖（仅 requests + python-dotenv）
+├── install.sh              # 自动安装脚本
+├── .env.example            # 环境变量模板（仅可选增强功能）
 ├── prompts/                # 9 种内置风格 + DIY 风格存放目录
 │   ├── kol_style.md
-│   └── ... (8 more styles)
+│   ├── deep_analysis.md
+│   ├── daily_express.md
+│   ├── meme_hunter.md
+│   ├── onchain_insight.md
+│   ├── oracle.md
+│   ├── project_research.md
+│   ├── trading_signal.md
+│   └── tutorial.md
 ├── skills/                 # 依赖的 Skill 子模块
-│   └── crypto-content-writer/
+│   └── binance-square-monitor/
+├── tests/                  # 测试文件
 ├── SKILL.md                # OpenClaw Skill 声明文件
 └── README.md               # 本文件
 ```
+
+---
+
+## 引用声明
+
+本项目使用了以下币安官方资源：
+
+- **Binance Skills Hub**: 本预言机原生集成了 [binance/binance-skills-hub](https://github.com/binance/binance-skills-hub) 发布的全部 12 个 Skill 的公开 API 端点。数据采集通过直接调用这些官方 API 实现，未修改或重新分发任何官方 Skill 代码。
+- **Binance Public API**: 现货行情、合约数据等通过 [Binance API](https://binance-docs.github.io/apidocs/) 公开端点获取。
+- **Binance Web3 API**: 链上数据、市场排名、交易信号等通过 Binance Web3 公开端点获取。
+- **Binance Square OpenAPI**: 广场发布功能通过 Binance Square OpenAPI 实现（需用户自行配置 API Key）。
 
 ---
 
@@ -205,7 +259,7 @@ binance-square-oracle/
 0x3B74BE938caB987120C3661C8e3161CD838e5a1A
 ```
 
-支持 USDT / BNB / 任意 BEP-20 代币。感谢每一位支持者 🙏
+支持 USDT / BNB / 任意 BEP-20 代币。
 
 ---
 
