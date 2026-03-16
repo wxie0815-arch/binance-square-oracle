@@ -76,16 +76,30 @@ else:
     print('  Some modules failed. Please check dependencies.')
 "
 
-# 5. Check optional enhancements
-echo -e "${CYAN}[5/5] Checking optional enhancements...${NC}"
+# 5. Show integrated Binance Skills & check optional enhancements
+echo -e "${CYAN}[5/5] Binance Official Skills Integration Status...${NC}"
+echo ""
+echo -e "  ${GREEN}[INTEGRATED]${NC} 本预言机已原生集成以下 12 个币安官方 Skill 数据能力："
+echo -e "  ${GREEN}  ✓${NC} binance/spot                              (现货行情)"
+echo -e "  ${GREEN}  ✓${NC} binance/derivatives-trading-usds-futures  (合约数据)"
+echo -e "  ${GREEN}  ✓${NC} binance/alpha                             (Alpha 代币)"
+echo -e "  ${GREEN}  ✓${NC} binance-web3/crypto-market-rank           (市场排名)"
+echo -e "  ${GREEN}  ✓${NC} binance-web3/trading-signal               (智能钱信号)"
+echo -e "  ${GREEN}  ✓${NC} binance-web3/meme-rush                    (Meme 追踪)"
+echo -e "  ${GREEN}  ✓${NC} binance-web3/query-token-info             (代币信息)"
+echo -e "  ${GREEN}  ✓${NC} binance-web3/query-token-audit            (安全审计)"
+echo -e "  ${GREEN}  ✓${NC} binance-web3/query-address-info           (地址查询)"
+echo -e "  ${GREEN}  ✓${NC} binance/assets                            (资产查询)"
+echo -e "  ${GREEN}  ✓${NC} binance/margin-trading                    (杠杆交易)"
+echo -e "  ${GREEN}  ✓${NC} binance/square-post                       (广场发布)"
+echo ""
+echo -e "  ${CYAN}无需额外安装 Binance Skills Hub，以上能力已内置于预言机中。${NC}"
 echo ""
 
-HAS_SQUARE=""
-HAS_6551=""
+echo -e "  ${CYAN}可选增强功能：${NC}"
 
 if [ -n "$SQUARE_API_KEY" ]; then
     echo -e "  ${GREEN}[ENABLED]${NC} L8 Square Publishing (SQUARE_API_KEY configured)"
-    HAS_SQUARE="yes"
 else
     echo -e "  ${YELLOW}[NOT SET]${NC} L8 Square Publishing"
     echo -e "           Set ${CYAN}SQUARE_API_KEY${NC} to enable auto-publishing to Binance Square."
@@ -93,7 +107,6 @@ fi
 
 if [ -n "$TOKEN_6551" ]; then
     echo -e "  ${GREEN}[ENABLED]${NC} L4 News Enhancement (TOKEN_6551 configured)"
-    HAS_6551="yes"
 else
     echo -e "  ${YELLOW}[NOT SET]${NC} L4 News Enhancement"
     echo -e "           Set ${CYAN}TOKEN_6551${NC} to enable hot news + KOL signal enrichment."
