@@ -150,3 +150,15 @@ Recent cleanup focused on competition readiness:
 ## Attribution
 
 Project author: `wxie0815-arch`
+
+---
+
+## 💰赞助支持
+
+如果这个项目对您有帮助，欢迎赞助支持！
+
+**BSC（BEP-20）钱包地址：** `0x3B74BE938caB987120C3661C8e3161CD838e5a1A`
+
+支持 USDT / BNB / 任意 BEP-20 代币。感谢每一位支持者🙏
+
+**作者：** 无邪Infinity | 币安广场@wuxie | X @wuxie149
