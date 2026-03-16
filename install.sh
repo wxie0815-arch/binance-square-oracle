@@ -2,15 +2,15 @@
 
 set -euo pipefail
 
-echo "== Binance Square Oracle local prototype installer =="
+echo "== Binance Square Oracle local helper installer =="
 
 if command -v python3 >/dev/null 2>&1; then
   PYTHON_BIN="python3"
 elif command -v python >/dev/null 2>&1; then
   PYTHON_BIN="python"
 else
-  echo "Python 3.8+ is required for local prototype mode."
-  echo "If you are using OpenClaw, prefer installing and running the root SKILL.md instead."
+  echo "Python 3.8+ is required for local helper mode."
+  echo "For full article generation, install the repository in OpenClaw and run the root SKILL.md."
   exit 1
 fi
 
@@ -42,6 +42,6 @@ print("publish helper ready =", callable(publish.publish_to_square))
 PY
 
 echo
-echo "Local prototype mode is ready."
-echo "For local generation, set OPENAI_API_KEY and optionally OPENAI_BASE_URL / OPENAI_MODEL."
-echo "For OpenClaw competition usage, install the repository as a skill and use SKILL.md."
+echo "Local helper mode is ready."
+echo "This repository does not require a separate model API key."
+echo "For real article generation, run the root SKILL.md inside OpenClaw so it uses the system-configured model."

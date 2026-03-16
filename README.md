@@ -11,7 +11,10 @@
 当前仓库提供两种运行方式：
 
 1. **推荐模式：OpenClaw 原生 Skill 模式**
-2. **备用模式：本地 Python 原型模式**
+2. **备用模式：本地 Python 辅助模式**
+
+> 重要说明：本项目**不需要**额外配置任何第三方大模型 API。  
+> 在 OpenClaw 中安装后，应直接使用 OpenClaw 系统里已经配置好的模型。
 
 ---
 
@@ -155,9 +158,17 @@ Use prompts/my_style.md as my custom style and produce a Square-ready article on
 5. 润色为 `final_article` / Polish into `final_article`
 6. 可选发布 / Optionally publish
 
-### 方式二：本地 Python 原型模式 / Local Python Prototype Mode
+> 这一模式下的模型调用由 OpenClaw 自身负责，直接使用 OpenClaw 系统里已经配置好的模型。
 
-这个模式适合本地调试、测试写作结果和验证调用链路。
+### 方式二：本地 Python 辅助模式 / Local Python Helper Mode
+
+这个模式适合做以下事情：
+
+- 数据采集联通性检查
+- 发布辅助模块调试
+- 仓库 smoke test
+
+它**不负责真实文章生成**。真实生成应在 OpenClaw 中完成。
 
 #### 依赖 / Requirements
 
@@ -166,11 +177,8 @@ Use prompts/my_style.md as my custom style and produce a Square-ready article on
 
 #### 环境变量 / Environment Variables
 
-复制 `.env.example` 为 `.env`，然后按需填写：
+只需要按需配置这些可选能力：
 
-- `OPENAI_API_KEY`
-- `OPENAI_BASE_URL`
-- `OPENAI_MODEL`
 - `SQUARE_API_KEY`
 - `TOKEN_6551`
 - `API_6551_BASE`
@@ -178,12 +186,14 @@ Use prompts/my_style.md as my custom style and produce a Square-ready article on
 #### 最小调用示例 / Minimal Example
 
 ```bash
-python3 -c "from oracle import run_oracle; r = run_oracle(style_name='deep_analysis'); print(r['final_article'])"
+python3 tests/final_e2e_test.py
 ```
 
-#### 启用发布 / Enable Publishing
+#### 数据采集示例 / Data Collection Example
 
-如果配置了 `SQUARE_API_KEY`，则本地原型中的 [`publish.py`](/D:/文档/Playground/repo_check/publish.py) 可以将生成结果发布到 Binance Square。
+```bash
+python3 -c "from collect import collect_all; print(list(collect_all(style_name='kol_style').keys()))"
+```
 
 ---
 
@@ -208,7 +218,7 @@ binance-square-oracle/
 
 - [`SKILL.md`](/D:/文档/Playground/repo_check/SKILL.md)：主 Skill 定义 / Main OpenClaw skill definition
 - [`collect.py`](/D:/文档/Playground/repo_check/collect.py)：数据采集与风格路由 / Data collection and style routing
-- [`oracle.py`](/D:/文档/Playground/repo_check/oracle.py)：文章生成逻辑 / Article generation logic
+- [`oracle.py`](/D:/文档/Playground/repo_check/oracle.py)：文章生成逻辑骨架 / Article generation workflow skeleton
 - [`publish.py`](/D:/文档/Playground/repo_check/publish.py)：发布辅助模块 / Publishing helper
 - [`references/writing_rules.md`](/D:/文档/Playground/repo_check/references/writing_rules.md)：写作规则基线 / Writing rules baseline
 
@@ -219,8 +229,8 @@ binance-square-oracle/
 当前版本已经完成以下整理：
 
 - 去掉缺失 submodule 的硬依赖
-- 去掉对隐藏 OpenClaw 私有端点的依赖假设
-- 明确区分 OpenClaw 原生模式和本地原型模式
+- 去掉对外部模型 API 的依赖
+- 明确区分 OpenClaw 原生模式和本地辅助模式
 - 保留多风格路由、生成、评分和发布能力
 - 补齐说明文档
 

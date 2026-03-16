@@ -61,7 +61,7 @@ def main():
     else:
         results["live_runs"]["skipped"] = {
             "status": "SKIPPED",
-            "detail": "Set RUN_LIVE_LLM_TESTS=1 and configure OPENAI_API_KEY to execute live generation.",
+            "detail": "Live article generation should be exercised inside OpenClaw so the skill uses the system-configured model.",
         }
 
     output_path = os.path.join(tempfile.gettempdir(), "binance_square_oracle_oracle_results.json")

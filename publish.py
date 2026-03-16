@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
-"""
-publish.py — Binance Square Oracle v1.0 广场发布层（可选）
-调用官方 binance/square-post 接口，发布文章到币安广场。
-需要 SQUARE_API_KEY 环境变量。
-"""
+"""Optional Binance Square publishing helper."""
+
+from __future__ import annotations
 
 import json
 import os
 import re
 import urllib.request
-import urllib.error
 
 SQUARE_API_KEY = os.environ.get("SQUARE_API_KEY", "")
 SQUARE_API_URL = "https://www.binance.com/bapi/composite/v1/public/pgc/openApi/content/add"
+MAX_SQUARE_BODY_LENGTH = 500
 
-# 常见加密货币代币列表（用于从文章中提取 mentionedCoins）
 KNOWN_COINS = [
     "BTC", "ETH", "BNB", "SOL", "XRP", "DOGE", "ADA", "AVAX", "DOT", "MATIC",
     "LINK", "UNI", "ATOM", "FIL", "APT", "ARB", "OP", "SUI", "SEI", "TIA",
@@ -23,61 +20,94 @@ KNOWN_COINS = [
 ]
 
 
-def _extract_coins(text):
-    """从文章文本中提取提及的加密货币代币"""
+def _extract_coins(text: str):
     found = []
     upper_text = text.upper()
     for coin in KNOWN_COINS:
         if coin in upper_text:
             found.append(coin)
-    return found[:5]  # 最多 5 个
+    return found[:5]
 
 
-def _extract_hashtags(text):
-    """从文章文本中提取 #hashtags"""
-    tags = re.findall(r'#(\w+)', text)
-    # 去重并保持顺序
+def _extract_hashtags(text: str):
+    tags = re.findall(r"#(\w+)", text)
     seen = set()
     unique_tags = []
     for tag in tags:
-        if tag.lower() not in seen:
-            seen.add(tag.lower())
+        normalized = tag.lower()
+        if normalized not in seen:
+            seen.add(normalized)
             unique_tags.append(f"#{tag}")
-    # 确保至少有基础标签
-    base_tags = ["#Binance", "#CryptoAnalysis"]
-    for bt in base_tags:
-        if bt.lower() not in seen:
-            unique_tags.append(bt)
+
+    for default_tag in ["#Binance", "#CryptoAnalysis"]:
+        normalized = default_tag[1:].lower()
+        if normalized not in seen:
+            seen.add(normalized)
+            unique_tags.append(default_tag)
+
     return unique_tags[:5]
 
 
-def publish_to_square(article_content, title=""):
-    """
-    发布文章到币安广场。
-    使用官方 binance/square-post 接口。
-    """
-    if not SQUARE_API_KEY:
-        return {"skipped": True, "reason": "SQUARE_API_KEY not configured"}
+def _missing_coin_mentions(text: str, coins: list[str]):
+    upper_text = text.upper()
+    missing = []
+    for coin in coins:
+        marker = f"${coin}"
+        if marker not in upper_text:
+            missing.append(marker)
+    return missing
 
-    # 检查字符限制
-    if len(article_content) > 500:
-        print(f"[publish] Warning: Article length ({len(article_content)}) exceeds 500 chars, truncating...")
-        article_content = article_content[:497] + "..."
 
-    # 动态提取 hashtags 和 mentionedCoins
+def _missing_hashtags(text: str, hashtags: list[str]):
+    existing = {tag.lower() for tag in re.findall(r"#\w+", text)}
+    return [tag for tag in hashtags if tag.lower() not in existing]
+
+
+def _compose_square_body(article_content: str):
+    article_content = article_content.strip()
     coins = _extract_coins(article_content)
     hashtags = _extract_hashtags(article_content)
 
-    # 构建发布内容（hashtags 追加到正文末尾）
-    body_text = article_content
-    tag_str = " ".join(hashtags)
-    if tag_str and tag_str not in body_text:
-        body_text = f"{body_text}\n\n{tag_str}"
+    trailer_parts = []
+    missing_coin_markers = _missing_coin_mentions(article_content, coins)
+    if missing_coin_markers:
+        trailer_parts.append(" ".join(missing_coin_markers))
 
-    payload = {
-        "bodyTextOnly": body_text,
-    }
+    missing_tags = _missing_hashtags(article_content, hashtags)
+    if missing_tags:
+        trailer_parts.append(" ".join(missing_tags))
 
+    trailer = ""
+    if trailer_parts:
+        trailer = "\n\n" + "\n\n".join(trailer_parts)
+
+    if len(article_content) + len(trailer) > MAX_SQUARE_BODY_LENGTH:
+        allowed = MAX_SQUARE_BODY_LENGTH - len(trailer)
+        if allowed <= 3:
+            body_text = (article_content[:MAX_SQUARE_BODY_LENGTH - 3] + "...") if len(article_content) > 3 else article_content
+        else:
+            body_text = article_content[:allowed - 3].rstrip() + "..." + trailer
+    else:
+        body_text = article_content + trailer
+
+    return body_text, coins, hashtags
+
+
+def _build_publish_payload(article_content: str, title: str = ""):
+    body_text, coins, _hashtags = _compose_square_body(article_content)
+    payload = {"bodyTextOnly": body_text}
+    if title:
+        payload["title"] = title
+    if coins:
+        payload["mentionedCoins"] = coins
+    return payload
+
+
+def publish_to_square(article_content: str, title: str = ""):
+    if not SQUARE_API_KEY:
+        return {"skipped": True, "reason": "SQUARE_API_KEY not configured"}
+
+    payload = _build_publish_payload(article_content, title=title)
     headers = {
         "Content-Type": "application/json",
         "X-Square-OpenAPI-Key": SQUARE_API_KEY,
@@ -85,23 +115,32 @@ def publish_to_square(article_content, title=""):
     }
 
     try:
-        body = json.dumps(payload).encode()
-        req = urllib.request.Request(SQUARE_API_URL, data=body, headers=headers)
-        with urllib.request.urlopen(req, timeout=15) as r:
-            response = json.loads(r.read().decode())
-            if response.get("code") == "000000":
-                post_id = response.get("data", {}).get("id", "")
-                post_url = f"https://www.binance.com/square/post/{post_id}" if post_id else ""
-                print(f"[publish] Success! Post URL: {post_url}")
-                return {"success": True, "data": response.get("data"), "url": post_url}
-            else:
-                return {"error": True, "code": response.get("code"), "message": response.get("message"), "response": response}
-    except Exception as e:
-        return {"error": str(e)}
+        req = urllib.request.Request(
+            SQUARE_API_URL,
+            data=json.dumps(payload).encode(),
+            headers=headers,
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            response = json.loads(resp.read().decode())
+    except Exception as exc:
+        return {"error": str(exc)}
+
+    if response.get("code") == "000000":
+        post_id = response.get("data", {}).get("id", "")
+        post_url = f"https://www.binance.com/square/post/{post_id}" if post_id else ""
+        return {"success": True, "data": response.get("data"), "url": post_url, "payload": payload}
+
+    return {
+        "error": True,
+        "code": response.get("code"),
+        "message": response.get("message"),
+        "response": response,
+        "payload": payload,
+    }
 
 
 if __name__ == "__main__":
-    print("[publish] Binance Square Publisher v1.0")
+    print("[publish] Binance Square Publisher v1.1")
     if not SQUARE_API_KEY:
         print("[publish] SQUARE_API_KEY not configured. Set it to enable publishing.")
     else:
