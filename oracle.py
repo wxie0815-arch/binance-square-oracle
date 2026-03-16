@@ -181,7 +181,7 @@ def _load_prompt_template(style_name):
 
 def _load_writing_rules():
     """加载写作规则 Skill"""
-    path = os.path.join(config.SKILLS_DIR, "crypto-content-writer", "SKILL.md")
+    path = os.path.join(config.REFERENCES_DIR, "writing_rules.md")
     if not os.path.exists(path):
         return "No specific writing rules provided."
     with open(path, "r", encoding="utf-8") as f:

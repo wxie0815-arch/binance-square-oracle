@@ -15,7 +15,7 @@ class TestConfigCenter(unittest.TestCase):
     """Test unified configuration center v1.0"""
 
     def test_version(self):
-        self.assertEqual(config.VERSION, "1.0")
+        self.assertEqual(config.VERSION, "1.1")
 
     def test_prompts_dir_defined(self):
         self.assertTrue(hasattr(config, "PROMPTS_DIR"))
@@ -28,6 +28,10 @@ class TestConfigCenter(unittest.TestCase):
     def test_workspace_dir_defined(self):
         self.assertTrue(hasattr(config, "WORKSPACE_DIR"))
         self.assertIsInstance(config.WORKSPACE_DIR, str)
+
+    def test_references_dir_defined(self):
+        self.assertTrue(hasattr(config, "REFERENCES_DIR"))
+        self.assertIsInstance(config.REFERENCES_DIR, str)
 
     def test_square_post_base_defined(self):
         self.assertTrue(hasattr(config, "SQUARE_POST_BASE"))
