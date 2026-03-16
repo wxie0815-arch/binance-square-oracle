@@ -20,10 +20,14 @@ SQUARE_API_KEY = os.environ.get("SQUARE_API_KEY", "")
 SQUARE_POST_BASE = "https://www.binance.com/en/square/post"
 
 # --- LLM 调用 ---
-client = OpenAI()
+# OpenClaw 平台已通过系统环境变量注入 OPENAI_API_KEY 和 OPENAI_BASE_URL，
+# 无需用户手动配置任何大模型 API Key。
+_api_key = os.environ.get("OPENAI_API_KEY", "openclaw-builtin")
+_base_url = os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_API_BASE") or None
+client = OpenAI(api_key=_api_key, base_url=_base_url)
 
 def call_llm(system_prompt, user_prompt):
-    """调用 LLM，默认使用 OpenClaw 系统 API（gpt-4.1-mini）"""
+    """调用 LLM，使用 OpenClaw 系统内置 API（无需用户配置）"""
     model = os.environ.get("OPENCLAW_MODEL", "gpt-4.1-mini")
     response = client.chat.completions.create(
         model=model,

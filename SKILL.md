@@ -4,7 +4,7 @@ description: >
   币安广场智能内容预言机。原生集成币安官方 Skills Hub 全部 12 个 Skill 的数据能力，
   按创作风格智能路由数据采集，支持 9 种内置风格 + 用户 DIY 自定义风格，
   通过 2 次 LLM 调用生成带预言机评分的高质量广场文章。安装即用，无需额外配置。
-metadata: {"openclaw": {"requires": {"bins": ["python3"]}, "primaryEnv": "OPENAI_API_KEY"}}
+metadata: {"openclaw": {"requires": {"bins": ["python3"]}}}
 ---
 
 # Binance Square Oracle v1.0
